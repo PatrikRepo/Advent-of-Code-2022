@@ -154,14 +154,14 @@ uint64_t traverseMap(const std::vector<std::string> &map, const Node &startNode)
 
 		for(auto &newNode:newNodes)
 		{
-			auto it = std::find_if(openList.begin(), openList.end(), [newNode](Node oNode){ return newNode.x == oNode.x && newNode.y == oNode.y; });
+			auto it = std::find_if(openList.begin(), openList.end(), [newNode](Node &oNode){ return newNode.x == oNode.x && newNode.y == oNode.y; });
 			if(it != std::end(openList))
 			{
 				it->steps = (it->steps <= newNode.steps) ? it->steps : newNode.steps;
 			}
 			else
 			{
-				if(std::find_if(closedList.begin(), closedList.end(), [newNode](Node cNode){ return newNode.x == cNode.x && newNode.y == cNode.y; }) == std::end(closedList))
+				if(std::find_if(closedList.begin(), closedList.end(), [newNode](Node &cNode){ return newNode.x == cNode.x && newNode.y == cNode.y; }) == std::end(closedList))
 				{
 					openList.push_back(newNode);
 				}
