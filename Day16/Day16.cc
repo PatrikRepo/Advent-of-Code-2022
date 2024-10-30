@@ -9,7 +9,9 @@
 struct State
 {
 	std::string room;
+	std::string prev;
 	std::vector<std::string> openValves;
+	std::unordered_map<std::string,unsigned> visits;
 	unsigned released = 0;
 	unsigned timeLeft = 0;
 	unsigned releasing = 0;
@@ -19,7 +21,10 @@ struct ElephantState
 {
 	std::string room1;
 	std::string room2;
+	std::string prev1;
+	std::string prev2;
 	std::vector<std::string> openValves;
+	std::unordered_map<std::string,unsigned> visits;
 	unsigned released = 0;
 	unsigned timeLeft1 = 0;
 	unsigned timeLeft2 = 0;
@@ -156,8 +161,14 @@ uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves)
 		
 		for(auto &newValve:valves.at(state.room).leadsTo)
 		{
+			if(newValve.first == "AA" || (valves.at(state.room).leadsTo.size() > 1 && newValve.first == state.prev) || (state.visits.count(newValve.first) == 1 && state.visits.at(newValve.first) == 2))
+			{
+				continue;
+			}
 			State newState = state;
+			newState.prev = newState.room;
 			newState.room = newValve.first;
+			newState.visits[newValve.first] += 1;
 			newState.timeLeft = (newState.timeLeft > newValve.second) ? newState.timeLeft - newValve.second : 0;
 			if(newState.timeLeft > 0 && 
 					valves.at(newValve.first).pressure > 0 && 
@@ -228,12 +239,14 @@ uint64_t withElephant(const std::unordered_map<std::string,Valve> &valves)
 		{
 			for(auto &newValve:valves.at(state.room1).leadsTo)
 			{
-				if(newValve.first == state.room2)
+				if(newValve.first == state.room2 || newValve.first == "AA" || (valves.at(state.room2).leadsTo.size() > 1 && newValve.first == state.prev1) || (state.visits.count(newValve.first) == 1 && state.visits.at(newValve.first) == 2))
 				{
 					continue;
 				}
 				ElephantState newState = state;
+				newState.prev1 = newState.room1;
 				newState.room1 = newValve.first;
+				newState.visits[newValve.first] += 1;
 				newState.timeLeft1 = (newState.timeLeft1 > newValve.second) ? newState.timeLeft1 - newValve.second : 0;
 				if(newState.timeLeft1 > 0 && 
 						valves.at(newValve.first).pressure > 0 && 
@@ -270,12 +283,14 @@ uint64_t withElephant(const std::unordered_map<std::string,Valve> &valves)
 		{
 			for(auto &newValve:valves.at(state.room2).leadsTo)
 			{
-				if(newValve.first == state.room1)
+				if(newValve.first == state.room1 || newValve.first == "AA" || (valves.at(state.room2).leadsTo.size() > 1 && newValve.first == state.prev2) || (state.visits.count(newValve.first) == 1 && state.visits.at(newValve.first) == 2))
 				{
 					continue;
 				}
 				ElephantState newState = state;
+				newState.prev2 = newState.room2;
 				newState.room2 = newValve.first;
+				newState.visits[newValve.first] += 1;
 				newState.timeLeft2 = (newState.timeLeft2 > newValve.second) ? newState.timeLeft2 - newValve.second : 0;
 				if(newState.timeLeft2 > 0 && 
 						valves.at(newValve.first).pressure > 0 && 
