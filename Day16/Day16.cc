@@ -11,7 +11,6 @@ struct State
 	std::string room;
 	std::string prev;
 	std::vector<std::string> openValves;
-	std::unordered_map<std::string,unsigned> visits;
 	unsigned released = 0;
 	unsigned timeLeft = 0;
 	unsigned releasing = 0;
@@ -158,14 +157,13 @@ uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves, un
 		
 		for(auto &newValve:valves.at(state.room).leadsTo)
 		{
-			if(newValve.first == "AA" || (valves.at(state.room).leadsTo.size() > 1 && newValve.first == state.prev) || (state.visits.count(newValve.first) == 1 && state.visits.at(newValve.first) == 2))
+			if(newValve.first == "AA" || (valves.at(state.room).leadsTo.size() > 1 && newValve.first == state.prev))
 			{
 				continue;
 			}
 			State newState = state;
 			newState.prev = newState.room;
 			newState.room = newValve.first;
-			newState.visits[newValve.first] += 1;
 			newState.timeLeft = (newState.timeLeft > newValve.second) ? newState.timeLeft - newValve.second : 0;
 			if(newState.timeLeft > 0 && 
 					valves.at(newValve.first).pressure > 0 && 
