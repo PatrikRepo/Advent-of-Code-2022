@@ -15,20 +15,7 @@ struct State
 	unsigned released = 0;
 	unsigned timeLeft = 0;
 	unsigned releasing = 0;
-};
-
-struct ElephantState
-{
-	std::string room1;
-	std::string room2;
-	std::string prev1;
-	std::string prev2;
-	std::vector<std::string> openValves;
-	std::unordered_map<std::string,unsigned> visits;
-	unsigned released = 0;
-	unsigned timeLeft1 = 0;
-	unsigned timeLeft2 = 0;
-	unsigned releasing = 0;
+	bool twice = false;
 };
 
 struct Valve
@@ -129,7 +116,7 @@ void reduceMap(std::unordered_map<std::string,Valve> &valves)
 	valves = newValves;
 }
 
-uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves)
+uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves, unsigned time, bool twice)
 {
 	uint64_t result = 0;
 	
@@ -141,7 +128,8 @@ uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves)
 	
 	State state;
 	state.room = "AA";
-	state.timeLeft = 30;
+	state.timeLeft = time;
+	state.twice = twice;
 	std::deque<State> openList;
 	openList.push_back(state);
 	std::vector<State> closedList;
@@ -150,14 +138,23 @@ uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves)
 	{
 		state = openList.front();
 		openList.pop_front();
+		closedList.push_back(state);
 		
 		if(state.timeLeft == 0)
 		{
-			result = state.released;
-			break;
+			if(state.twice)
+			{
+				state.twice = false;
+				state.timeLeft = time;
+				state.room = "AA";
+				state.prev = "";
+			}
+			else
+			{
+				result = state.released;
+				break;
+			}
 		}
-		
-		closedList.push_back(state);
 		
 		for(auto &newValve:valves.at(state.room).leadsTo)
 		{
@@ -202,130 +199,6 @@ uint64_t releasePressure(const std::unordered_map<std::string,Valve> &valves)
 	return result;
 }
 
-uint64_t withElephant(const std::unordered_map<std::string,Valve> &valves)
-{
-	uint64_t result = 0;
-	
-	unsigned maxPressure = 0;
-	for(auto it=valves.begin(); it!=valves.end(); it++)
-	{
-		maxPressure += it->second.pressure;
-	}
-	
-	ElephantState state;
-	state.room1 = "AA";
-	state.room2 = "AA";
-	state.timeLeft1 = 26;
-	state.timeLeft2 = 26;
-	std::deque<ElephantState> openList;
-	openList.push_back(state);
-	std::vector<ElephantState> closedList;
-	
-	while(!openList.empty())
-	{
-		state = openList.front();
-		openList.pop_front();
-
-		if(state.timeLeft1 == 0 && state.timeLeft2 == 0)
-		{
-			result = state.released;
-			break;
-		}
-		
-		closedList.push_back(state);
-		bool person = state.timeLeft1 >= state.timeLeft2;
-		
-		if(person)
-		{
-			for(auto &newValve:valves.at(state.room1).leadsTo)
-			{
-				if(newValve.first == state.room2 || newValve.first == "AA" || (valves.at(state.room2).leadsTo.size() > 1 && newValve.first == state.prev1) || (state.visits.count(newValve.first) == 1 && state.visits.at(newValve.first) == 2))
-				{
-					continue;
-				}
-				ElephantState newState = state;
-				newState.prev1 = newState.room1;
-				newState.room1 = newValve.first;
-				newState.visits[newValve.first] += 1;
-				newState.timeLeft1 = (newState.timeLeft1 > newValve.second) ? newState.timeLeft1 - newValve.second : 0;
-				if(newState.timeLeft1 > 0 && 
-						valves.at(newValve.first).pressure > 0 && 
-						std::find_if(newState.openValves.begin(), newState.openValves.end(), [newValve](std::string &oValve){ return newValve.first == oValve; }) == std::end(newState.openValves))
-				{
-					newState.timeLeft1--;
-					newState.released += (valves.at(newValve.first).pressure)*newState.timeLeft1;
-					newState.openValves.push_back(newValve.first);
-					newState.releasing += valves.at(newValve.first).pressure;
-					if(newState.releasing == maxPressure)
-					{
-						newState.timeLeft1 = 0;
-						newState.timeLeft2 = 0;
-					}
-				}
-				auto it = std::find_if(openList.begin(), openList.end(), [newState](ElephantState &oState){ 
-					return ((newState.room1 == oState.room1 && newState.room2 == oState.room2) || (newState.room1 == oState.room2 && newState.room2 == oState.room1)) && newState.released == oState.released; });
-				if(it != std::end(openList))
-				{
-					if(it->timeLeft1 + it->timeLeft2 < newState.timeLeft1 + newState.timeLeft2)
-					{
-						*it = newState;
-					}
-				}
-				else if(std::find_if(closedList.begin(), closedList.end(), [newState](ElephantState &cState){ 
-					return ((newState.room1 == cState.room1 && newState.room2 == cState.room2) || (newState.room1 == cState.room2 && newState.room2 == cState.room1)) && newState.releasing == cState.releasing;}) == std::end(closedList))
-				{
-					openList.push_back(newState);
-				}
-			}
-		}
-		
-		else
-		{
-			for(auto &newValve:valves.at(state.room2).leadsTo)
-			{
-				if(newValve.first == state.room1 || newValve.first == "AA" || (valves.at(state.room2).leadsTo.size() > 1 && newValve.first == state.prev2) || (state.visits.count(newValve.first) == 1 && state.visits.at(newValve.first) == 2))
-				{
-					continue;
-				}
-				ElephantState newState = state;
-				newState.prev2 = newState.room2;
-				newState.room2 = newValve.first;
-				newState.visits[newValve.first] += 1;
-				newState.timeLeft2 = (newState.timeLeft2 > newValve.second) ? newState.timeLeft2 - newValve.second : 0;
-				if(newState.timeLeft2 > 0 && 
-						valves.at(newValve.first).pressure > 0 && 
-						std::find_if(newState.openValves.begin(), newState.openValves.end(), [newValve](std::string &oValve){ return newValve.first == oValve; }) == std::end(newState.openValves))
-				{
-					newState.timeLeft2--;
-					newState.released += (valves.at(newValve.first).pressure)*newState.timeLeft2;
-					newState.openValves.push_back(newValve.first);
-					newState.releasing += valves.at(newValve.first).pressure;
-					if(newState.releasing == maxPressure)
-					{
-						newState.timeLeft1 = 0;
-						newState.timeLeft2 = 0;
-					}
-				}
-				auto it = std::find_if(openList.begin(), openList.end(), [newState](ElephantState &oState){ 
-					return ((newState.room1 == oState.room1 && newState.room2 == oState.room2) || (newState.room1 == oState.room2 && newState.room2 == oState.room1)) && newState.releasing == oState.releasing; });
-				if(it != std::end(openList) && it->timeLeft1 + it->timeLeft2 < newState.timeLeft1 + newState.timeLeft2)
-				{
-					*it = newState;
-				}
-				else if(std::find_if(closedList.begin(), closedList.end(), [newState](ElephantState &cState){ 
-					return ((newState.room1 == cState.room1 && newState.room2 == cState.room2) || (newState.room1 == cState.room2 && newState.room2 == cState.room1)) && newState.releasing == cState.releasing;}) == std::end(closedList))
-				{
-					openList.push_back(newState);
-				}
-			}
-		}
-		
-		std::sort(openList.begin(), openList.end(), [](ElephantState &s1, ElephantState &s2){ 
-			if(s1.timeLeft1 + s1.timeLeft2 == s2.timeLeft1 + s2.timeLeft2) return s1.released > s2.released; else return s1.timeLeft1+s1.timeLeft2 > s2.timeLeft1+s2.timeLeft2; });
-	}
-	
-	return result;
-}
 
 int main()
 {
@@ -337,8 +210,8 @@ int main()
 	parseInput(valves);
 	reduceMap(valves);
 	
-	resultA = releasePressure(valves);
-	resultB = withElephant(valves);
+	resultA = releasePressure(valves, 30, false);
+	resultB = releasePressure(valves, 26, true);
 
 	std::cout << "result A: " << resultA << '\n';
 	std::cout << "result B: " << resultB << std::endl;
