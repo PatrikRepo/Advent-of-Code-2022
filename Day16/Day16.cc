@@ -228,6 +228,10 @@ uint64_t withElephant(const std::unordered_map<std::string,Valve> &valves)
 		{
 			for(auto &newValve:valves.at(state.room1).leadsTo)
 			{
+				if(newValve.first == state.room2)
+				{
+					continue;
+				}
 				ElephantState newState = state;
 				newState.room1 = newValve.first;
 				newState.timeLeft1 = (newState.timeLeft1 > newValve.second) ? newState.timeLeft1 - newValve.second : 0;
@@ -266,6 +270,10 @@ uint64_t withElephant(const std::unordered_map<std::string,Valve> &valves)
 		{
 			for(auto &newValve:valves.at(state.room2).leadsTo)
 			{
+				if(newValve.first == state.room1)
+				{
+					continue;
+				}
 				ElephantState newState = state;
 				newState.room2 = newValve.first;
 				newState.timeLeft2 = (newState.timeLeft2 > newValve.second) ? newState.timeLeft2 - newValve.second : 0;
